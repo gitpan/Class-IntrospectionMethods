@@ -1,7 +1,7 @@
 # $Author: domi $
-# $Date: 2004/12/08 12:27:27 $
+# $Date: 2004/12/13 12:20:10 $
 # $Name:  $
-# $Revision: 1.3 $
+# $Revision: 1.4 $
 
 package Class::IntrospectionMethods::Catalog ;
 use strict ;
@@ -16,7 +16,7 @@ use vars qw/$VERSION @ISA @EXPORT_OK @CARP_NOT/ ;
 @EXPORT_OK = qw(set_global_catalog set_method_info set_method_in_catalog);
 @CARP_NOT=qw/Class::IntrospectionMethods/ ;
 
-$VERSION = sprintf "%d.%03d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%03d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 my $obsolete_behavior = 'carp' ;
 my $support_legacy = 0 ;
@@ -527,14 +527,16 @@ sub add
 =head2 help ( slot_name )
 
 Return the help info for slot_name that was given to
-set_global_catalog. This is just a place holder.
+set_global_catalog. Return an empty string if no help was
+provided. This help method is just a place holder, no fancy treatment
+is done.
 
 =cut
 
 sub help
   {
     my $self = shift;
-    return $self->{help}{$_[0]} ;
+    return $self->{help}{$_[0]} || '';
   }
 
 sub catalog_isa

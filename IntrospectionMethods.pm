@@ -1,9 +1,9 @@
 # (X)Emacs mode: -*- cperl -*-
 
 # $Author: domi $
-# $Date: 2004/12/08 12:49:32 $
+# $Date: 2004/12/13 12:19:43 $
 # $Name:  $
-# $Revision: 1.4 $
+# $Revision: 1.5 $
 
 package Class::IntrospectionMethods;
 
@@ -123,7 +123,7 @@ my $obsolete_behavior = 'carp' ;
 my $support_legacy = 0 ;
 my $legacy_object_init = 'cmm_init' ;
 
-$VERSION = sprintf "%d.%03d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%03d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 =head1 Transition from Class::MethodMaker
 
@@ -1366,9 +1366,6 @@ sub list
     goto &array ;
   }
 
-# -------------------------------------
-
-# added by Dominique Dumont (22.i.02)
 sub _add_array_methods {
   my ($methods, $field, $create_array) = @_;
 

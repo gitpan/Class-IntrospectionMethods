@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test::More ;
-BEGIN { plan tests => 28 } ;
+BEGIN { plan tests => 39 } ;
 
 ########################################################################
 use strict ;
@@ -66,7 +66,11 @@ foreach ( #[''],             [qw/catalog_a catalog_b catalog_c/],] ,
   {
     my $command =  $_->[0][0] ;
     my $args = $_->[0][1] ;
-    is_deeply([$catalog_obj->$command($args)], $_->[1],
+    my @res = $catalog_obj->$command($args) ;
+    # looks like is_deeply does not make a difference between '' and
+    # undef. So we must test this specifically
+    ok(defined $res[0],"$command result is defined");
+    is_deeply(\@res, $_->[1],
 	      "call my_meta_catalog->('".join("','",@{$_->[0]})."')") ;
   }
 
