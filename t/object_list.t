@@ -14,7 +14,7 @@ set_obsolete_behavior('skip',1) ;
 make_methods
   (
    object_list  => [
-		    'Y' => { slot => 'a' },
+		    'Y' => 'a' ,
 		   ],
    '-parent' ,
    object_list  => [

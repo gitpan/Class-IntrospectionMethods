@@ -95,7 +95,7 @@ make_methods
 package main;
 
 use ExtUtils::testlib;
-use Test::More tests => 29 ;
+use Test::More tests => 30 ;
 
 use Data::Dumper ;
 
@@ -175,8 +175,8 @@ is_deeply( \@result, ['my_cat'],
 is_deeply([$o->CMM_SLOT_CATALOG('stdhash')], ['my_cat'],
    "test \$o->CMM_SLOT_CATALOG('stdhash')") ;
 
-
-ok($o->CMM_SLOT_CATALOG('stdhash' => 'foo_cat'),
+# legacy must accept to change to a non-existing catalog
+ok($o->CMM_SLOT_CATALOG('stdhash' => 'dummy_cat'),
   "change object catalog" );
 
 is_deeply([&X::CMM_SLOT_CATALOG('stdhash')], ['my_cat'],
@@ -187,10 +187,12 @@ is( join(' ',&X::CMM_CATALOG('my_cat')), 'stdhash my_object my_scalar',
   "test &X::CMM_CATALOG('my_cat')") ;
 is( join(' ',$o->CMM_CATALOG('my_cat')), 'my_object my_scalar',
   "test \$o->CMM_CATALOG('my_cat')") ;
-is( join(' ',$o->CMM_CATALOG('foo_cat')), 'foo bar baz a b c stdhash',
+is( join(' ',$o->CMM_CATALOG('foo_cat')), 'foo bar baz a b c',
+  "test \$o->CMM_CATALOG('foo_cat')") ;
+is( join(' ',$o->CMM_CATALOG('dummy_cat')), 'stdhash',
   "test \$o->CMM_CATALOG('foo_cat')") ;
 
-is_deeply([$o->CMM_SLOT_CATALOG('stdhash')], ['foo_cat'],
+is_deeply([$o->CMM_SLOT_CATALOG('stdhash')], ['dummy_cat'],
 	 "test check object catalog");
 
 

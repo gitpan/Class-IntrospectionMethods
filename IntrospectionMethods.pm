@@ -1,9 +1,9 @@
 # (X)Emacs mode: -*- cperl -*-
 
 # $Author: domi $
-# $Date: 2004/11/16 13:04:26 $
+# $Date: 2004/12/08 12:49:32 $
 # $Name:  $
-# $Revision: 1.3 $
+# $Revision: 1.4 $
 
 package Class::IntrospectionMethods;
 
@@ -121,8 +121,9 @@ use Carp qw( carp cluck croak );
 
 my $obsolete_behavior = 'carp' ;
 my $support_legacy = 0 ;
+my $legacy_object_init = 'cmm_init' ;
 
-$VERSION = sprintf "%d.%03d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%03d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 =head1 Transition from Class::MethodMaker
 
@@ -156,6 +157,7 @@ sub set_obsolete_behavior
   {
     ($obsolete_behavior, $support_legacy) = @_ ;
     Class::IntrospectionMethods::Parent::set_obsolete_behavior (@_) ;
+    Class::IntrospectionMethods::Catalog::set_obsolete_behavior (@_) ;
   }
 
 # internal
@@ -207,6 +209,22 @@ my %default_user_options =
    auto_vivify => 1
   ) ;
 
+my $child_init = sub
+  {
+    my ($obj,$init_method) = @_ ;
+
+    return unless defined $obj ;
+
+    if (defined $init_method && $obj->can($init_method))
+      {
+	$obj->$init_method()  ;
+      }
+    elsif ($support_legacy && $obj->can($legacy_object_init)) 
+      {
+	warn_obsolete("calling obsolete $legacy_object_init on ".ref($obj)) ;
+	$obj->$legacy_object_init() ;
+      }
+  } ;
 
 # set legacy catalog methods that were defined in modified version of
 # Class::MethodMaker v1.08
@@ -224,17 +242,19 @@ sub set_legacy_methods
        sub {
 	 my $p = ref($_[0]) ? shift : $target_class; 
 	 my @catalog_names = scalar @_ ? @_ :
-	   sort $p->CMM_CATALOG_LEGACY()->all_catalog ;
-	 my @result = map ($p->CMM_CATALOG_LEGACY()->slot($_), @catalog_names);
+	   $p->CMM_CATALOG_LEGACY()->all_catalog ;
+	 my @result = $p->CMM_CATALOG_LEGACY()->slot(@catalog_names);
 	 return wantarray ? @result : \@result ;
        },
 
-       CMM_SLOT_CATALOG => 
-       sub {my $p = ref $_[0] ? shift : $target_class;
-	    my $slot = shift ;
-	    $p->CMM_CATALOG_LEGACY()->change($slot, shift) if @_ ;
-	    my @r = $p->CMM_CATALOG_LEGACY()->catalog($slot);
-	    return @r } ,
+       CMM_SLOT_CATALOG => sub 
+       {
+	 my $p = ref $_[0] ? shift : $target_class;
+	 my $slot = shift ;
+	 $p->CMM_CATALOG_LEGACY()->change($slot, shift) if @_ ;
+	 my @r = $p->CMM_CATALOG_LEGACY()->catalog($slot);
+	 return $r[0] ; # legacy method can only return 1 item
+       } ,
 
        CMM_SLOT_DETAIL  => 
        sub {my $p = ref $_[0] ? shift : $target_class; 
@@ -814,9 +834,7 @@ sub object
 		    graft_parent_method($obj,$self, $slot) 
 		      if $graft && defined $obj;
 
-		    #print "created $type (init is $init_method)\n";
-		    $obj->$init_method() if defined $init_method 
-		      && defined $obj && $obj->can($init_method) ;
+		    $child_init->($obj, $init_method) ;
 
 		    # store object
 		    $self->{$slot} = $obj;
@@ -965,6 +983,8 @@ sub tie_scalar
 
 sub _add_hash_methods {
   my ($methods, $field, $create_hash) = @_ ;
+
+  croak "Missing create_hash sub" unless defined $create_hash;
 
   $methods->{$field . "_keys"} =
     sub {
@@ -1134,8 +1154,7 @@ sub hash
 		    my ($l_obj,$l_idx) = @_ ;
 		    graft_parent_method($l_obj,$self,$name,$l_idx) 
 		      if $parent_method_closure ;
-		    $l_obj->$init_meth() 
-		      if defined $init_meth && $l_obj->can($init_meth) ;
+		    $child_init->($l_obj, $init_meth) ;
 		  } ;
 
 		my $custom_tied_obj = tie %hash, 'Tie::Hash::CustomStorage', %$x_parm,
@@ -1225,7 +1244,7 @@ sub hash
             store_slot_in_catalog($name, $user_options->{catalog_name}, 
                                           slot_type => 'hash', @info);
 
-            _add_hash_methods(\%methods, $name);
+            _add_hash_methods(\%methods, $name,$create_hash);
           }
       }
     install_methods(%methods);
@@ -1353,7 +1372,7 @@ sub list
 sub _add_array_methods {
   my ($methods, $field, $create_array) = @_;
 
-  $create_array ||= sub {} ; # some slot don't need initialization
+  croak "Create_array is missing" unless defined $create_array ;
 
   my %stock ;
 
@@ -1563,8 +1582,7 @@ sub array
 		    my ($l_obj,$l_idx) = @_ ;
 		    graft_parent_method($l_obj,$self,$name,$l_idx) 
 		      if $parent_method_closure ;
-		    $l_obj->$init_meth() 
-		      if defined $init_meth && $l_obj->can($init_meth) ;
+		    $child_init->($l_obj, $init_meth) ;
 		  } ;
 
 		#print $name,':', Dumper $x_parm ;
@@ -1684,12 +1702,13 @@ sub object_list
     while (@args) 
       {
 	my $class = shift @args;
-	my $array = shift @args ;
+	my $item = shift @args ;
 
-	my $slot = delete $array->{slot} 
+	my $slot = ref $item ?  delete $item->{slot} : $item
 	  or croak "object_list: missing slot parameter";
 
-	push @new, $slot, { class_storage => $class, %$array };
+	my @other =  ref $item ? %$item : () ;
+	push @new, $slot, { class_storage => $class, @other };
       }
 
     #print Dumper \@new ;

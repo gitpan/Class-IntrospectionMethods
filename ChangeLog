@@ -1,0 +1,8 @@
+2004-12-08  Dominique Dumont  <domi@komarr.grenoble.hp.com>
+
+	* IntrospectionMethods.pm (set_legacy_methods): bug fixes in
+	legacy methods
+
+	* Catalog.pm: added some help for legacy application
+	(slot): accept several catalog names instead of one.
+

@@ -1,7 +1,7 @@
 # $Author: domi $
-# $Date: 2004/11/16 13:05:12 $
+# $Date: 2004/12/08 12:50:41 $
 # $Name:  $
-# $Revision: 1.2 $
+# $Revision: 1.3 $
 
 package Class::IntrospectionMethods::Parent ;
 use strict ;
@@ -15,7 +15,7 @@ use vars qw/$VERSION @ISA @EXPORT_OK $trace/ ;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(set_parent_method_name graft_parent_method set_obsolete_behavior);
 
-$VERSION = sprintf "%d.%03d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%03d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 $trace = 0;
 
@@ -173,21 +173,24 @@ sub graft_parent_method
 	*$sub_slot_name = sub 
 	  { 
 	    warn_obsolete ("CMM_SLOT_NAME method is deprecated") ;
-	    return shift ->$parent_method_name()->slot_name; 
+	    my $po = shift ->$parent_method_name() ;
+	    return defined $po  ? $po->slot_name : undef; 
 	  } unless $child -> can($sub_slot_name) ;
 
 	my $sub_index_name = ref($child).'::CMM_INDEX_VALUE' ;
 	*$sub_index_name = sub 
 	  { 
 	    warn_obsolete ("CMM_INDEX_VALUE method is deprecated") ;
-	    return shift ->$parent_method_name()->index_value ;
+	    my $po = shift ->$parent_method_name() ;
+	    return defined $po  ? $po->index_value :undef;
 	  } unless $child -> can($sub_index_name)  ;
 
 	my $sub_parent = ref($child).'::CMM_PARENT' ;
 	*$sub_parent = sub 
 	  { 
 	    warn_obsolete ("CMM_PARENT method is deprecated") ;
-	    return shift ->$parent_method_name()->parent(@_) ;
+	    my $po = shift ->$parent_method_name() ;
+	    return defined $po  ? ($po->parent(@_)) : (undef) ;
 	  } unless $child -> can($sub_parent) ;
       }
   }

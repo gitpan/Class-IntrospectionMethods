@@ -1,7 +1,7 @@
 # $Author: domi $
-# $Date: 2004/11/16 13:04:46 $
+# $Date: 2004/12/08 12:27:27 $
 # $Name:  $
-# $Revision: 1.2 $
+# $Revision: 1.3 $
 
 package Class::IntrospectionMethods::Catalog ;
 use strict ;
@@ -16,7 +16,23 @@ use vars qw/$VERSION @ISA @EXPORT_OK @CARP_NOT/ ;
 @EXPORT_OK = qw(set_global_catalog set_method_info set_method_in_catalog);
 @CARP_NOT=qw/Class::IntrospectionMethods/ ;
 
-$VERSION = sprintf "%d.%03d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%03d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+
+my $obsolete_behavior = 'carp' ;
+my $support_legacy = 0 ;
+
+sub set_obsolete_behavior
+  {
+    $obsolete_behavior = shift;
+    $support_legacy = shift ;
+  }
+
+sub warn_obsolete
+  {
+    return if $obsolete_behavior eq 'skip' ;
+    no strict 'refs';
+    $obsolete_behavior->(@_) ;
+  }
 
 =head1 NAME
 
@@ -32,7 +48,7 @@ This class handles slot catalogs for L<Class::IntrospectionMethods>.
 
 =cut
 
-# These lexical varaibles are also used in ClassCatalog and
+# These lexical variables are also used in ClassCatalog and
 # ObjectCatalog
 my %construction_info ;
 my %catalog_info ;
@@ -228,29 +244,46 @@ sub catalog
     return wantarray ? @result : \@result ;
   }
 
-=head2 slot ( catalog_name )
+=head2 slot ( catalog_name, ... )
 
-Returns the slots contained in catalog_name (takes into accounts the
-isa parameter)
+Returns the slots contained in the catalogs passed as
+arguments. (takes into accounts the isa parameter)
 
 =cut
 
 sub slot
   {
-    my ($self, $catalog_name) = @_ ;
+    my $self = shift ;
+    my @all_cats = @_ ;
 
-    croak "slot: Missing catalog name" unless defined $catalog_name;
+    croak "slot: Missing catalog name" unless @_ ;
 
     my $clist = $self->{catalog_list} ;
 
-    croak "slot: unknown catalog $catalog_name, expected",
-      join(',',keys %$clist)
-	unless defined $clist->{$catalog_name};
+    foreach my $catalog_name (@all_cats) 
+      {
+	if (not defined $clist->{$catalog_name})
+	  {
+	    if ($support_legacy)
+	      {
+		$self->{catalog_list}{$catalog_name} = [] ;
+		$self->{class_catalog}->add_catalog($catalog_name) ;
+		Class::IntrospectionMethods::Catalog::warn_obsolete
+		    ("Warning: undeclared catalog $catalog_name, Created ...");
+	      }
+	    else
+	      {
+		croak "slot: unknown catalog $catalog_name, expected",
+		  join(',',keys %$clist) ;
+	      }
+	  }
+      }
 
-    my @all_cats = ($catalog_name) ;
-    push @all_cats, $self->catalog_isa($catalog_name) ;
+    # add inherited catalogs
+    push @all_cats,
+      map {$self->catalog_isa($_)} @all_cats ;
 
-    #print "slot: $catalog_name is @all_cats\n";
+    #print "slot: @_ is @all_cats\n";
     my @result ;
     foreach my $slot (@{$self->ordered_slot_list()})
       {
@@ -350,12 +383,25 @@ sub change
     croak "set_catalog, change command: Missing catalog name"
       unless defined $catalog_name;
 
-    my @cat = ref $catalog_name ? sort @$catalog_name : ($catalog_name) ;
+    # check new catalog
+   my @cat = ref $catalog_name ? sort @$catalog_name : ($catalog_name) ;
     map 
       {
-	croak "set_catalog, change command: unknown catalog $catalog_name, ",
-	  "expected '",join("','",keys %{$self->{catalog_list}}),"'\n"
-	    unless defined $self->{catalog_list}{$_} ; 
+	if (not defined $self->{catalog_list}{$_})
+	  {
+	    if ($support_legacy) 
+	      {
+		Class::IntrospectionMethods::Catalog::warn_obsolete("Warning: Undeclared catalog $_. Created...");
+		$self->{class_catalog}->add_catalog($_);
+		$self->{catalog_list}{$_} = [ $slot_name ] ;
+	      }
+	    else
+	      {
+		croak "set_catalog, change command: unknown catalog ",
+		  "$catalog_name, expected '",
+		    join("','",keys %{$self->{catalog_list}}),"'\n"
+	      }
+	  }
       } @cat ;
 
     # move slot from older catalog(s) to other(s)
@@ -455,6 +501,15 @@ sub ordered_slot_list
 sub catalog_list
   {
     return $_[0]->{catalog_list} ;
+  }
+
+
+# To support legacy, catalogs can be added at run_time not sure it's a
+# good idea for new application (too many way to mess things up)
+sub add_catalog
+  {
+    my ($self, $catalog) = @_ ;
+    $self->{catalog_list}{$catalog} ||= [] ;
   }
 
 sub add

@@ -1,14 +1,14 @@
 # $Author: domi $
-# $Date: 2004/11/16 13:05:31 $
+# $Date: 2004/12/08 12:51:31 $
 # $Name:  $
-# $Revision: 1.2 $
+# $Revision: 1.3 $
 
 use ExtUtils::MakeMaker;
 
 WriteMakefile
   (
    NAME      => 'Class-IntrospectionMethods',
-   VERSION   => '1.001',
+   VERSION   => '1.002',
    ABSTRACT  => 'Make methods with introspection',
    AUTHOR    => 'Dominique Dumont  (domi@komarr.grenoble.hp.com)',
    PM        =>
